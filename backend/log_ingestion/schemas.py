@@ -1,8 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
-
+from pydantic import BaseModel, ConfigDict
 
 class LogIngestRequest(BaseModel):
     logs: List[str]
@@ -29,9 +28,8 @@ class LogResponse(BaseModel):
     message: str
     severity: Optional[str] = None
     raw_log: str
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
 
 class IngestError(BaseModel):
