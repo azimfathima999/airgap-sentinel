@@ -43,3 +43,17 @@ class IngestResponse(BaseModel):
     log_ids: List[int]
     alert_ids: List[int]
     errors: List[IngestError] = []
+
+class ThreatIntelImportItem(BaseModel):
+    threat_type: str
+    threat_name: str
+    description: Optional[str] = None
+    ioc_type: Optional[str] = None
+    ioc_value: Optional[str] = None
+    severity: Optional[str] = None
+    confidence: Optional[float] = None
+    source: Optional[str] = None
+
+
+class ThreatIntelImportRequest(BaseModel):
+    updates: List[ThreatIntelImportItem]
