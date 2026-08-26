@@ -381,3 +381,89 @@ def test_updates_import_placeholder():
     assert data["message"] == (
         "Threat intelligence import is handled by the updates service."
     )
+def test_get_threat_intel():
+    from backend.log_ingestion.models import ThreatIntel
+
+    db = TestingSessionLocal()
+
+    try:
+        threat = ThreatIntel(
+            threat_type="malware",
+            threat_name="Test Malware",
+            description="Test threat intelligence record",
+            ioc_type="ip",
+            ioc_value="10.10.10.10",
+            severity="HIGH",
+            confidence=0.95,
+            source="test-feed",
+        )
+
+        db.add(threat)
+        db.commit()
+        db.refresh(threat)
+
+        threat_id = threat.id
+    finally:
+        db.close()
+
+    response = client.get("/threat-intel")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["count"] == 1
+    assert len(data["threat_intel"]) == 1
+    assert data["threat_intel"][0]["id"] == threat_id
+    assert data["threat_intel"][0]["ioc_type"] == "ip"
+    assert data["threat_intel"][0]["ioc_value"] == "10.10.10.10"
+    assert data["threat_intel"][0]["severity"] == "HIGH"
+
+
+def test_get_threat_intel_by_id():
+    from backend.log_ingestion.models import ThreatIntel
+
+    db = TestingSessionLocal()
+
+    try:
+        threat = ThreatIntel(
+            threat_type="vulnerability",
+            threat_name="Test Vulnerability",
+            description="Test vulnerability",
+            ioc_type="hash",
+            ioc_value="abcdef123456",
+            severity="CRITICAL",
+            confidence=0.99,
+            source="test-feed",
+        )
+
+        db.add(threat)
+        db.commit()
+        db.refresh(threat)
+
+        threat_id = threat.id
+    finally:
+        db.close()
+
+    response = client.get(f"/threat-intel/{threat_id}")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == threat_id
+    assert data["threat_type"] == "vulnerability"
+    assert data["threat_name"] == "Test Vulnerability"
+    assert data["ioc_type"] == "hash"
+    assert data["ioc_value"] == "abcdef123456"
+    assert data["severity"] == "CRITICAL"
+    assert data["confidence"] == 0.99
+
+
+def test_get_missing_threat_intel():
+    response = client.get("/threat-intel/99999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Threat intelligence 99999 not found"
+    )
