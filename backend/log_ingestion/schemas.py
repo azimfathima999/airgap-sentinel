@@ -1,42 +1,45 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
-class LogBase(BaseModel):
-    source: str
-    level: str
-    message: str
-    hostname: Optional[str] = None
-    service: Optional[str] = None
-    trace_id: Optional[str] = None
-    metadata: Optional[str] = None
+from pydantic import BaseModel
 
-class LogCreate(LogBase):
-    pass
 
-class LogUpdate(BaseModel):
-    level: Optional[str] = None
-    message: Optional[str] = None
-    metadata: Optional[str] = None
+class LogIngestRequest(BaseModel):
+    logs: List[str]
 
-class Log(LogBase):
-    id: int
+
+class ParsedLog(BaseModel):
     timestamp: datetime
-    created_at: datetime
-    updated_at: datetime
+    source_ip: Optional[str] = None
+    hostname: Optional[str] = None
+    event_type: str
+    username: Optional[str] = None
+    message: str
+    severity: Optional[str] = None
+    raw_log: str
 
-    class Config:
-        from_attributes = True
 
 class LogResponse(BaseModel):
     id: int
-    source: str
-    level: str
-    message: str
     timestamp: datetime
-    hostname: Optional[str]
-    service: Optional[str]
-    trace_id: Optional[str]
+    source_ip: Optional[str] = None
+    hostname: Optional[str] = None
+    event_type: str
+    username: Optional[str] = None
+    message: str
+    severity: Optional[str] = None
+    raw_log: str
 
     class Config:
         from_attributes = True
+
+
+class IngestError(BaseModel):
+    line: str
+    error: str
+
+
+class IngestResponse(BaseModel):
+    log_ids: List[int]
+    alert_ids: List[int]
+    errors: List[IngestError] = []
