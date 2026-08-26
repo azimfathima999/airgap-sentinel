@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.log_ingestion.database import get_db
-from backend.log_ingestion.models import Log, Alert, Report
-
+from backend.log_ingestion.models import Log, Alert, Report, ThreatIntel
+from backend.log_ingestion.schemas import ThreatIntelImportRequest
 
 router = APIRouter(tags=["logs"])
 
@@ -648,16 +648,53 @@ def get_report(
 # ============================================================
 
 @router.post("/updates/import")
-def import_updates():
+def import_updates(
+    request: Optional[ThreatIntelImportRequest] = None,
+    db: Session = Depends(get_db),
+):
     """
-    Placeholder endpoint for threat-intelligence updates.
+    Import threat-intelligence updates.
+
+    The request body is optional so the original placeholder
+    endpoint remains backwards compatible.
     """
+
+    if request is None:
+        return {
+            "status": "accepted",
+            "imported": 0,
+            "message": (
+                "Threat intelligence import is handled by the "
+                "updates service."
+            ),
+        }
+
+    imported = 0
+
+    try:
+        for item in request.updates:
+            threat = ThreatIntel(
+                threat_type=item.threat_type,
+                threat_name=item.threat_name,
+                description=item.description,
+                ioc_type=item.ioc_type,
+                ioc_value=item.ioc_value,
+                severity=item.severity,
+                confidence=item.confidence,
+                source=item.source,
+            )
+
+            db.add(threat)
+            imported += 1
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "status": "accepted",
-        "imported": 0,
-        "message": (
-            "Threat intelligence import is handled by the "
-            "updates service."
-        ),
+        "imported": imported,
+        "message": "Threat intelligence updates imported successfully.",
     }
