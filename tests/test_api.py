@@ -467,3 +467,57 @@ def test_get_missing_threat_intel():
     assert response.json()["detail"] == (
         "Threat intelligence 99999 not found"
     )
+def test_generate_report():
+    from backend.log_ingestion.models import Report
+
+    response = client.post("/reports/generate")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["status"] == "success"
+
+    report = data["report"]
+
+    assert report["title"] == "Daily Security Summary"
+    assert report["description"] == (
+        "Generated security summary from the local detection engine."
+    )
+    assert report["report_type"] == "daily_summary"
+    assert report["status"] == "FINALIZED"
+    assert report["generated_by"] == "detection-engine"
+
+    # Verify the generated report contains the current statistics.
+    assert report["total_logs"] == 0
+    assert report["total_alerts"] == 0
+    assert report["critical_alerts"] == 0
+
+    # Verify the report was actually persisted.
+    db = TestingSessionLocal()
+
+    try:
+        saved_report = (
+            db.query(Report)
+            .filter(Report.id == report["id"])
+            .first()
+        )
+
+        assert saved_report is not None
+        assert saved_report.title == "Daily Security Summary"
+        assert saved_report.report_type == "daily_summary"
+        assert saved_report.status == "FINALIZED"
+    finally:
+        db.close()
+
+    # Verify the persisted report can be retrieved through the API.
+    response = client.get(f"/reports/{report['id']}")
+
+    assert response.status_code == 200
+
+    retrieved = response.json()
+
+    assert retrieved["id"] == report["id"]
+    assert retrieved["title"] == "Daily Security Summary"
+    assert retrieved["report_type"] == "daily_summary"
+    assert retrieved["status"] == "FINALIZED"

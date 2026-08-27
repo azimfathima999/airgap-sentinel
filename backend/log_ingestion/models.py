@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, JSON
 from sqlalchemy.sql import func
 from backend.log_ingestion.database import Base
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 # Enums for log levels and severity
@@ -70,7 +70,7 @@ class Alert(Base):
     rule_triggered = Column(String(255), nullable=True)  # Which rule triggered this
 
     # Timestamps
-    triggered_at = Column(DateTime, default=datetime.utcnow, index=True)
+    triggered_at = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True)
     acknowledged_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
 
@@ -105,8 +105,8 @@ class ThreatIntel(Base):
     source = Column(String(255), nullable=True)  # Where this threat intel came from
 
     # Timestamps
-    first_seen = Column(DateTime, default=datetime.utcnow)
-    last_seen = Column(DateTime, default=datetime.utcnow)
+    first_seen = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    last_seen = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
 
     # Additional extra_metadata
     extra_metadata = Column(Text, nullable=True)  # JSON string with additional context
@@ -135,7 +135,7 @@ class Response(Base):
     action_result = Column(Text, nullable=True)  # Result of the action
 
     # Timestamps
-    initiated_at = Column(DateTime, default=datetime.utcnow)
+    initiated_at = Column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     completed_at = Column(DateTime, nullable=True)
 
     # Audit trail
