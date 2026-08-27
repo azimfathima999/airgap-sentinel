@@ -1,0 +1,6 @@
+{
+  "failed_login_threshold": 5,
+  "failed_login_window_minutes": 5,
+  "normal_login_start": 6,
+  "normal_login_end": 22
+}
