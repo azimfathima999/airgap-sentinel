@@ -434,16 +434,6 @@ async function updateAlertStatus(id, status) {
     $("dStatus").textContent =
       getField(updatedAlert, "status", "state") || status;
 
-    if (acknowledgeButton) {
-      acknowledgeButton.textContent =
-        status === "ACKNOWLEDGED" ? "Acknowledged" : "Acknowledge";
-    }
-
-    if (resolveButton) {
-      resolveButton.textContent =
-        status === "RESOLVED" ? "Resolved" : "Resolve";
-    }
-
     await loadAlertDetail(id);
     await loadAlerts();
 
