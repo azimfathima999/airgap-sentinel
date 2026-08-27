@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentinel Console — Air-Gapped Log Monitor</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="console">
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◈</span>
+        <span class="brand-name">SENTINEL<span class="brand-name-dim">/console</span></span>
+      </div>
+
+      <div class="topbar-status">
+        <span class="isolation-badge" id="isolationBadge">
+          <span class="isolation-dot"></span>
+          OFFLINE &middot; ISOLATED SEGMENT
+        </span>
+
+        <span class="health-pill" id="healthPill" data-state="unknown">
+          <span class="health-dot"></span>
+          <span class="health-label">checking link&hellip;</span>
+        </span>
+
+        <button class="btn-refresh" id="refreshBtn" title="Refresh now">
+          <span class="refresh-icon">⟳</span> Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="body-shell">
+
+      <!-- ============ NAV ============ -->
+      <nav class="sidenav">
+        <a href="#/dashboard" class="nav-link" data-route="dashboard">
+          <span class="nav-index">01</span> Dashboard
+        </a>
+        <a href="#/alerts" class="nav-link" data-route="alerts">
+          <span class="nav-index">02</span> Alerts
+        </a>
+        <a href="#/report" class="nav-link" data-route="report">
+          <span class="nav-index">03</span> Report
+        </a>
+
+        <div class="nav-footer">
+          <div class="nav-footer-row">
+            <span>Polling</span>
+            <label class="switch">
+              <input type="checkbox" id="pollToggle" checked />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="nav-footer-row muted-small">
+            <span>Interval</span>
+            <select id="pollInterval">
+              <option value="5000">5s</option>
+              <option value="7000" selected>7s</option>
+              <option value="10000">10s</option>
+            </select>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ============ MAIN ============ -->
+      <main class="main">
+
+        <!-- ---------- DASHBOARD VIEW ---------- -->
+        <section class="view" id="view-dashboard">
+          <div class="view-head">
+            <h1>Dashboard</h1>
+            <p class="view-sub">Live posture of the isolated segment. No external network required.</p>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card">
+              <span class="stat-label">Total logs ingested</span>
+              <span class="stat-value" id="statLogs">—</span>
+              <span class="stat-foot">since database build</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Total alerts</span>
+              <span class="stat-value" id="statAlerts">—</span>
+              <span class="stat-foot">all severities</span>
+            </div>
+            <div class="stat-card stat-card--warn">
+              <span class="stat-label">High / critical alerts</span>
+              <span class="stat-value" id="statHighCrit">—</span>
+              <span class="stat-foot">needs review now</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Threat-intel matches</span>
+              <span class="stat-value" id="statThreatIntel">—</span>
+              <span class="stat-foot">known indicators</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Recent events</h2>
+              <span class="panel-head-meta" id="recentEventsMeta"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="recentEventsTable">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Source IP</th>
+                    <th>Event</th>
+                    <th>Detail</th>
+                  </tr>
+                </thead>
+                <tbody><!-- rows injected --></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="recentEventsEmpty" hidden>No log activity recorded yet.</p>
+          </div>
+        </section>
+
+        <!-- ---------- ALERTS VIEW ---------- -->
+        <section class="view" id="view-alerts" hidden>
+          <div class="view-head">
+            <h1>Alerts</h1>
+            <p class="view-sub">Click a row to inspect the evidence behind a detection.</p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>All alerts</h2>
+              <span class="panel-head-meta" id="alertsMeta"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table data-table--clickable" id="alertsTable">
+                <thead>
+                  <tr>
+                    <th>Severity</th>
+                    <th>Rule</th>
+                    <th>Source IP</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody><!-- rows injected --></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="alertsEmpty" hidden>No alerts have fired.</p>
+          </div>
+        </section>
+
+        <!-- ---------- ALERT DETAIL VIEW ---------- -->
+        <section class="view" id="view-alert-detail" hidden>
+          <div class="view-head">
+            <button class="btn-back" id="backToAlerts">&larr; Back to alerts</button>
+            <h1>Alert <span id="detailAlertId" class="mono-accent"></span></h1>
+            <p class="view-sub">Full evidence trail for this detection.</p>
+          </div>
+
+          <div class="detail-grid">
+            <div class="panel">
+              <div class="panel-head"><h2>Summary</h2></div>
+              <dl class="kv-list" id="detailSummary"><!-- rows injected --></dl>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><h2>Response</h2></div>
+              <div id="detailResponse" class="response-block">—</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Evidence</h2></div>
+            <pre class="evidence-block" id="detailEvidence">—</pre>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn-primary" id="openReportBtn">Open incident report &rarr;</button>
+          </div>
+        </section>
+
+        <!-- ---------- REPORT VIEW ---------- -->
+        <section class="view" id="view-report" hidden>
+          <div class="view-head">
+            <h1>Incident report</h1>
+            <p class="view-sub">Human-readable summary for hand-off and record-keeping.</p>
+          </div>
+
+          <div class="panel">
+            <div class="report-lookup">
+              <label for="reportIdInput">Report ID</label>
+              <input type="text" id="reportIdInput" placeholder="e.g. RPT-2026-0007" />
+              <button class="btn-primary" id="loadReportBtn">Load report</button>
+            </div>
+          </div>
+
+          <div class="panel" id="reportPanel" hidden>
+            <div class="panel-head">
+              <h2 id="reportTitle">Report</h2>
+              <span class="panel-head-meta" id="reportMeta"></span>
+            </div>
+            <div class="report-body" id="reportBody"><!-- injected --></div>
+          </div>
+
+          <p class="empty-state" id="reportEmpty">No report loaded. Open an alert and click "Open incident report", or enter a report ID above.</p>
+        </section>
+
+      </main>
+    </div>
+
+    <footer class="statusbar">
+      <span id="statusbarLeft">Ready.</span>
+      <span id="statusbarRight" class="mono-accent">API: <span id="apiBaseLabel"></span></span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
