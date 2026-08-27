@@ -1,0 +1,14 @@
+{
+  "updates": [
+    {
+      "threat_type": "malware",
+      "threat_name": "Member4-Test-Malicious-IP",
+      "description": "Offline threat-intelligence update for Member 4 demonstration.",
+      "ioc_type": "ip",
+      "ioc_value": "10.0.0.99",
+      "severity": "CRITICAL",
+      "confidence": 0.95,
+      "source": "offline-update-demo"
+    }
+  ]
+}
