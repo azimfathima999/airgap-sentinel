@@ -428,7 +428,7 @@ def test_get_existing_report():
     assert data["critical_alerts"] == 0
     assert data["status"] == "FINALIZED"
     assert data["generated_by"] == "test"
-def test_updates_import_placeholder():
+def test_updates_import_offline_package():
     response = client.post("/updates/import")
 
     assert response.status_code == 200
@@ -436,9 +436,9 @@ def test_updates_import_placeholder():
     data = response.json()
 
     assert data["status"] == "accepted"
-    assert data["imported"] == 0
+    assert data["imported"] == 1
     assert data["message"] == (
-        "Threat intelligence import is handled by the updates service."
+        "Verified offline threat intelligence updates imported successfully."
     )
 def test_get_threat_intel():
     from backend.log_ingestion.models import ThreatIntel

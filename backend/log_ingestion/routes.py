@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta, UTC
+import hashlib
+import json
 import re
+from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -1123,6 +1126,87 @@ def get_report(
 
 
 # ============================================================
+# OFFLINE UPDATE VERIFICATION
+# ============================================================
+
+def verify_offline_update():
+    base_dir = Path(__file__).resolve().parents[2]
+    incoming_dir = base_dir / "updates" / "incoming"
+    verified_dir = base_dir / "updates" / "verified"
+
+    update_file = incoming_dir / "update.json"
+    manifest_file = incoming_dir / "manifest.json"
+
+    if not update_file.exists() or not manifest_file.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Offline update package is incomplete."
+        )
+
+    try:
+        manifest = json.loads(
+            manifest_file.read_text(encoding="utf-8")
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid update manifest."
+        )
+
+    expected_hash = manifest.get("sha256")
+    algorithm = manifest.get("algorithm")
+
+    if algorithm != "SHA-256" or not expected_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid update manifest."
+        )
+
+    digest = hashlib.sha256()
+
+    with update_file.open("rb") as file:
+        for chunk in iter(lambda: file.read(8192), b""):
+            digest.update(chunk)
+
+    actual_hash = digest.hexdigest()
+
+    if actual_hash != expected_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Offline update rejected: SHA-256 hash mismatch."
+        )
+
+    try:
+        update_data = json.loads(
+            update_file.read_text(encoding="utf-8")
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid update JSON."
+        )
+
+    updates = update_data.get("updates")
+
+    if not isinstance(updates, list):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid update format."
+        )
+
+    verified_dir.mkdir(parents=True, exist_ok=True)
+
+    (verified_dir / "update.json").write_bytes(
+        update_file.read_bytes()
+    )
+    (verified_dir / "manifest.json").write_bytes(
+        manifest_file.read_bytes()
+    )
+
+    return updates
+
+
+# ============================================================
 # THREAT INTELLIGENCE IMPORT
 # ============================================================
 
@@ -1132,34 +1216,59 @@ def import_updates(
     db: Session = Depends(get_db),
 ):
     """
-    Import threat-intelligence updates into the local database.
+    Import threat-intelligence updates.
 
-    This endpoint remains compatible with the existing
-    ThreatIntelImportRequest schema.
+    With a request body, preserve the existing API behavior.
+    Without a body, verify and import the offline update package.
     """
 
-    if request is None:
+    # Preserve existing API/test compatibility.
+    if request is not None:
+        imported = 0
+
+        try:
+            for item in request.updates:
+                threat = ThreatIntel(
+                    threat_type=item.threat_type,
+                    threat_name=item.threat_name,
+                    description=item.description,
+                    ioc_type=item.ioc_type,
+                    ioc_value=item.ioc_value,
+                    severity=item.severity,
+                    confidence=item.confidence,
+                    source=item.source,
+                )
+
+                db.add(threat)
+                imported += 1
+
+            db.commit()
+
+        except Exception:
+            db.rollback()
+            raise
+
         return {
             "status": "accepted",
-            "imported": 0,
-            "message": (
-                "Threat intelligence import is handled by "
-                "the updates service."
-            ),
+            "imported": imported,
+            "message": "Threat intelligence updates imported successfully.",
         }
+
+    # No request body: use the verified offline update package.
+    updates = verify_offline_update()
     imported = 0
 
     try:
-        for item in request.updates:
+        for item in updates:
             threat = ThreatIntel(
-                threat_type=item.threat_type,
-                threat_name=item.threat_name,
-                description=item.description,
-                ioc_type=item.ioc_type,
-                ioc_value=item.ioc_value,
-                severity=item.severity,
-                confidence=item.confidence,
-                source=item.source,
+                threat_type=item.get("threat_type"),
+                threat_name=item.get("threat_name"),
+                description=item.get("description"),
+                ioc_type=item.get("ioc_type"),
+                ioc_value=item.get("ioc_value"),
+                severity=item.get("severity"),
+                confidence=item.get("confidence"),
+                source=item.get("source"),
             )
 
             db.add(threat)
@@ -1174,9 +1283,7 @@ def import_updates(
     return {
         "status": "accepted",
         "imported": imported,
-        "message": (
-            "Threat intelligence updates imported successfully."
-        ),
+        "message": "Verified offline threat intelligence updates imported successfully.",
     }
 
 
