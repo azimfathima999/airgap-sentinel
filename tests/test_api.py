@@ -313,6 +313,65 @@ def test_alert_lifecycle():
     alert = response.json()
 
     assert alert["status"] == "RESOLVED"
+
+def test_cannot_reopen_resolved_alert():
+    logs = [
+        (
+            "Aug 27 10:00:01 server "
+            "sshd[9001]: Failed password for lifecycle2 "
+            "from 10.0.0.200 port 8001"
+        ),
+        (
+            "Aug 27 10:01:01 server "
+            "sshd[9002]: Failed password for lifecycle2 "
+            "from 10.0.0.200 port 8002"
+        ),
+        (
+            "Aug 27 10:02:01 server "
+            "sshd[9003]: Failed password for lifecycle2 "
+            "from 10.0.0.200 port 8003"
+        ),
+    ]
+
+    response = client.post(
+        "/logs/ingest",
+        json={"logs": logs},
+    )
+
+    assert response.status_code == 200
+
+    alert_id = response.json()["alert_ids"][0]
+
+    response = client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "ACKNOWLEDGED"},
+    )
+    assert response.status_code == 200
+
+    response = client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "RESOLVED"},
+    )
+    assert response.status_code == 200
+    assert response.json()["alert"]["status"] == "RESOLVED"
+    assert response.json()["alert"]["resolved_at"] is not None
+
+    response = client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "ACKNOWLEDGED"},
+    )
+
+    assert response.status_code == 400
+    assert "Cannot move alert" in response.json()["detail"]
+
+    response = client.get(f"/alerts/{alert_id}")
+    assert response.status_code == 200
+
+    alert = response.json()
+    assert alert["status"] == "RESOLVED"
+    assert alert["resolved_at"] is not None
+
+
 def test_get_report_not_available():
     response = client.get("/reports/99999")
 

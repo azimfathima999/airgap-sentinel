@@ -821,13 +821,31 @@ def update_alert_status(
             detail=f"Alert {alert_id} not found",
         )
 
+    current_status = str(alert.status or "OPEN").upper()
+
+    status_order = {
+        "OPEN": 0,
+        "ACKNOWLEDGED": 1,
+        "RESOLVED": 2,
+        "CLOSED": 3,
+    }
+
+    if status_order[new_status] < status_order[current_status]:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot move alert {alert_id} "
+                f"from {current_status} to {new_status}"
+            ),
+        )
+
     alert.status = new_status
 
-    if new_status == "ACKNOWLEDGED":
+    if new_status in {"ACKNOWLEDGED", "RESOLVED", "CLOSED"}:
         if alert.acknowledged_at is None:
             alert.acknowledged_at = datetime.now(UTC)
 
-    elif new_status in {"RESOLVED", "CLOSED"}:
+    if new_status in {"RESOLVED", "CLOSED"}:
         if alert.resolved_at is None:
             alert.resolved_at = datetime.now(UTC)
 
