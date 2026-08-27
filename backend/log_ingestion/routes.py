@@ -698,3 +698,103 @@ def import_updates(
         "imported": imported,
         "message": "Threat intelligence updates imported successfully.",
     }
+# ============================================================
+# THREAT INTELLIGENCE RETRIEVAL
+# ============================================================
+
+def threat_intel_to_dict(threat: ThreatIntel) -> dict:
+    return {
+        "id": threat.id,
+        "threat_type": threat.threat_type,
+        "threat_name": threat.threat_name,
+        "description": threat.description,
+        "ioc_type": threat.ioc_type,
+        "ioc_value": threat.ioc_value,
+        "severity": threat.severity,
+        "confidence": threat.confidence,
+        "source": threat.source,
+        "first_seen": threat.first_seen,
+        "last_seen": threat.last_seen,
+        "created_at": threat.created_at,
+        "updated_at": threat.updated_at,
+    }
+
+
+@router.get("/threat-intel")
+def get_threat_intel(
+    ioc_type: Optional[str] = None,
+    ioc_value: Optional[str] = None,
+    threat_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    source: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """
+    Return imported threat intelligence.
+
+    Optional filters:
+    - ioc_type
+    - ioc_value
+    - threat_type
+    - severity
+    - source
+    """
+
+    query = db.query(ThreatIntel)
+
+    if ioc_type:
+        query = query.filter(ThreatIntel.ioc_type == ioc_type)
+
+    if ioc_value:
+        query = query.filter(ThreatIntel.ioc_value == ioc_value)
+
+    if threat_type:
+        query = query.filter(ThreatIntel.threat_type == threat_type)
+
+    if severity:
+        query = query.filter(ThreatIntel.severity == severity)
+
+    if source:
+        query = query.filter(ThreatIntel.source == source)
+
+    threats = (
+        query
+        .order_by(ThreatIntel.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "count": len(threats),
+        "threat_intel": [
+            threat_intel_to_dict(threat)
+            for threat in threats
+        ],
+    }
+
+
+@router.get("/threat-intel/{threat_id}")
+def get_threat_intel_item(
+    threat_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Return one threat-intelligence record.
+    """
+
+    threat = (
+        db.query(ThreatIntel)
+        .filter(ThreatIntel.id == threat_id)
+        .first()
+    )
+
+    if threat is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Threat intelligence {threat_id} not found",
+        )
+
+    return threat_intel_to_dict(threat)
