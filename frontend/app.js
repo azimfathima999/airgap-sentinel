@@ -271,7 +271,20 @@ async function loadAlertDetail(id) {
     const alert = await api(`/alerts/${encodeURIComponent(id)}`);
 
     const severity = getField(alert, "severity", "level");
+const status = String(
+  getField(alert, "status", "state") || "OPEN"
+).toUpperCase();
 
+const acknowledgeButton = $("acknowledgeAlert");
+const resolveButton = $("resolveAlert");
+
+if (acknowledgeButton) {
+  acknowledgeButton.hidden = status !== "OPEN";
+}
+
+if (resolveButton) {
+  resolveButton.hidden = !["OPEN", "ACKNOWLEDGED"].includes(status);
+}
     $("dTitle").textContent =
       getField(alert, "title", "name", "alert", "message") ||
       `Alert ${id}`;
@@ -291,8 +304,7 @@ async function loadAlertDetail(id) {
     $("dTime").textContent =
       formatTime(getField(alert, "timestamp", "time", "created_at"));
 
-    $("dStatus").textContent =
-      getField(alert, "status", "state") || "—";
+    $("dStatus").textContent = status;
 
     $("dRule").textContent =
       getField(
