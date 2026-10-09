@@ -1,0 +1,6 @@
+2026-10-01T09:00:00Z server01 sshd: Accepted password for operator from 192.0.2.10
+2026-10-01T09:01:00Z server01 sshd: Failed password for admin from 192.0.2.25
+2026-10-01T09:01:03Z server01 sshd: Failed password for admin from 192.0.2.25
+2026-10-01T09:01:06Z server01 sshd: Failed password for admin from 192.0.2.25
+2026-10-01T09:01:09Z server01 sshd: Failed password for admin from 192.0.2.25
+2026-10-01T09:01:12Z server01 sshd: Failed password for admin from 192.0.2.25
